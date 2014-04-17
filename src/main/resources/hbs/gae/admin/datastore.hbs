@@ -1,0 +1,257 @@
+<!doctype html>
+<html class="no-js">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/normalize/3.0.1/normalize.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/angular-ui/0.4.0/angular-ui.min.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.min.css">
+        <link rel="stylesheet" href="//cdn.rawgit.com/dalelotts/angular-bootstrap-datetimepicker/master/src/css/datetimepicker.css">
+        
+		<style>
+			#result td { max-width: 480px; max-height: 480px; overflow: auto;}
+			pre { display: inline-block; } 
+		</style>
+		
+        <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.5.1/moment.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.15/angular.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.15/angular-route.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.15/angular-sanitize.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui/0.4.0/angular-ui.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.10.0/ui-bootstrap-tpls.min.js"></script>
+        <script src="//cdn.rawgit.com/dalelotts/angular-bootstrap-datetimepicker/0.2.2/src/js/datetimepicker.js"></script>
+        
+        <script>
+ 		angular.module("admin", ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ui.bootstrap.typeahead'])
+ 			.controller("AdminController", ['$scope', '$http', function($scope, $http){
+ 				$scope.kinds = undefined;
+				$scope.currentKind = undefined;
+				
+				$http.get("/admin/datastore/kinds").success(function(data){
+					$scope.kinds = data;
+				});
+ 			}])
+ 			.controller("KindController", ['$scope', '$http', '$routeParams', function($scope, $http, $routeParams){
+ 				$scope.kind = $routeParams.kind;
+ 				$scope.$parent.currentKind = $scope.kind;
+ 				$scope.schema = undefined;
+ 				$scope.properties = undefined;
+ 				$scope.queryOutput = undefined;
+ 				$scope.error = undefined;
+ 				$scope.query = undefined;
+ 				$scope.result = [];
+ 				$scope.loading = false;
+ 				$scope.operations = {	"=": "=",
+ 										"<=": "<=", 
+ 										"<": "<",
+ 										">=": ">=",
+ 										">": ">",
+ 										"!=": "!=", 
+ 										"in": "in"
+ 									};
+ 				
+ 				$scope.fieldTypes = {
+ 										'java.lang.String'		: "text",
+ 										'java.lang.Long'		: "number",
+ 										'java.lang.Integer'		: "number",
+ 										'long'					: "number",
+ 										'int'					: "number",
+ 										'org.joda.time.DateTime': "datetime"
+ 									};
+ 				
+ 				$http.get("/admin/datastore/kind/"+$scope.kind).success(function(data){
+ 					$scope.schema = data;
+ 					if($scope.query == undefined){
+ 						$scope.query = [{}]
+ 					}
+				});
+ 				
+ 				$scope.addQueryElement = function(){
+ 					$scope.query.push({})	
+ 				};
+ 				
+ 				$scope.removeQueryElement = function(element){
+ 					var index = $scope.query.indexOf(element);
+ 					if(index >= 0){
+ 						$scope.query.splice(index, 1);
+ 					}
+ 				};
+ 				
+ 				$scope.runQuery = function(){
+ 					$scope.loading = true;
+ 					$scope.error = undefined;
+ 					$http.post("/admin/datastore/kind/"+$scope.kind+"/query", $scope.query)
+ 						.success(function(data){
+ 							var keys = _.map(data, function(element){
+ 								return _.keys(element);
+ 							})
+ 							$scope.allKeys = _.uniq(_.flatten(keys));
+	 	 					$scope.result = data;
+ 							$scope.loading = false;
+	 					})
+	 					.error(function(data){
+	 						$scope.loading = false;
+	 						$scope.error = data;
+	 						if(console){
+		 						console.error(data);
+	 						}
+	 					});
+ 				};
+ 				
+ 				$scope.typeFor = function(fieldName){
+ 					var field = _.findWhere($scope.schema.fields, {name: fieldName});
+ 					var javaType = field ? field.type : undefined;
+ 					var angularType = $scope.fieldTypes[javaType] || "text";
+ 					if(field && field.options && field.options.length){
+	 					angularType = "select"
+ 					}
+ 					return angularType;
+ 				};
+ 				
+ 				$scope.isObject = function(obj){
+ 					return _.isObject(obj);
+ 				};
+ 				
+ 				$scope.options = function(fieldName){
+ 					var field = _.findWhere($scope.schema.fields, {name: fieldName});
+ 					return field && field.options && field.options.length ? field.options : undefined;
+ 				};
+ 				
+ 				$scope.possibleOptions = function(fieldName){
+ 					return $scope.schema.possibleValues[fieldName];
+ 				};
+ 			}])
+ 			.config(['$routeProvider', function($routeProvider) {
+ 			    $routeProvider.
+ 			      when('/kind/', {
+ 			    	templateUrl: 'empty.html'
+ 			      }).
+ 			      when('/kind/:kind/', {
+ 			    	templateUrl: 'kind.html',
+ 			    	controller: 'KindController'
+ 			      }).
+ 			      otherwise({
+ 			        redirectTo: '/kind/'
+ 			      });
+ 			  }]);
+        </script>
+    </head>
+    <body ng-app="admin" ng-controller="AdminController">
+   		<nav class="navbar navbar-default" role="navigation">
+   			<div class="container-fluid">
+	   			<div class="navbar-header">
+   				</div>
+   			</div>
+   		</nav>
+    	<div class="container-fluid">
+			<aside class="col-sm-2">
+				<h3>Kinds</h3>
+				<ul class="nav nav-pills nav-stacked">
+					 <li ng-class="{active: currentKind == kind}" ng-repeat="(kind, class) in kinds">
+					 	<a href="#/kind/&#123;&#123; kind &#125;&#125;/">
+							&#123;&#123; kind &#125;&#125;
+						</a>
+					</li>
+				</ul>
+			</aside>
+			<section  class="col-sm-10" ng-view>
+			</section>
+		</div>		
+		<script type="text/ng-template" id="empty.html">
+			<h3>Please choose a kind.</h3>
+			<div class="well">
+				
+			</div>
+		</script>
+		<script type="text/ng-template" id="kind.html">
+			<h3>Kind &#123;&#123; kind &#125;&#125;</h3>
+			<div class="well">
+				<div class="alert alert-danger" ng-show="error">
+					&#123;&#123; error &#125;&#125;
+				</div>
+				<form ng-submit="runQuery()" class="form-vertical">
+					<div ng-repeat="element in query">
+						<div class="form-group col-sm-2">
+							<select class="form-control" ng-model="element.field" ng-options="field.name as field.name for field in schema.fields | filter: {indexed: true}"></select>	
+						</div>
+						<div class="form-group col-sm-2">
+							<select class="form-control" ng-model="element.operation" ng-options="value for (key, value) in operations" ng-init="element.operation = element.operation || '='"></select>
+						</div>
+						<div class="form-group col-sm-7" ng-switch on="typeFor(element.field)">
+							<input  ng-switch-when="text" type="text" 		class="form-control" ng-model="element.value" ng-enabled="field" typeahead="option for option in possibleOptions(element.field) | filter: '!!'"/> <!-- we filter out nulls with this crazy expression -->
+							<input  ng-switch-when="number" type="number" 	class="form-control" ng-model="element.value" ng-enabled="field"/>
+							<select ng-switch-when="select" 				class="form-control" ng-model="element.value" ng-options="option for option in options(element.field)"></select>
+							<div class="dropdown" ng-switch-when="datetime">
+							    <a class="dropdown-toggle my-toggle-select" data-toggle="dropdown" data-target="#" href="">
+							        <div class="input-append">
+							    	    <input type="text" class="form-control" ng-model="element.value">
+							        	<span class="add-on"><i class="icon-calendar"></i></span>
+							        </div>
+							    </a>
+							    <ul class="dropdown-menu" role="menu">
+							        <datetimepicker  ng-model="element.value" data-datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }"></datetimepicker>
+							    </ul>
+							</div>
+						</div>
+				
+						<div class="form-group col-sm-1">
+							<a 
+								href="javascript:void(0);" 
+								class="btn btn-default"
+								ng-click="removeQueryElement(element)"
+								>-</a>
+						</div>
+					</div>
+					<div class="form-group clear">
+						<a 
+							href="javascript:void(0);" 
+							class="btn btn-primary" 
+							ng-click="addQueryElement()">
+								Add
+						</a>
+						<button class="btn btn-success" type="submit">Go</button>
+						<i class="fa fa-spinner fa-spin" style="font-size: 3em;" ng-show="loading"></i>
+					</div>
+				</form>
+				<div id="result" class="table-responsive" style="overflow: auto">
+					<table class="table table-condensed table-bordered table-striped table-hover">
+						<thead>
+							<tr>
+								<th ng-repeat="key in allKeys">
+									&#123;&#123; key &#125;&#125;
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr ng-repeat="row in result">
+								<td ng-repeat="key in allKeys">
+									<pre ng-if="isObject(row[key])">&#123;&#123; row[key] | json: object &#125;&#125;</pre>
+									<span ng-if="!isObject(row[key])">&#123;&#123; row[key] &#125;&#125;</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</script>
+		<script type="text/ng-template" id="template/typeahead/typeahead-popup.html">
+	  	<ul class="dropdown-menu" ng-if="isOpen()" ng-style="{top: position.top+'px', left: position.left+'px'}" style="display: block;" role="listbox">
+    		<li ng-repeat="match in matches track by $index" ng-class="{active: isActive($index) }" ng-mouseenter="selectActive($index)" ng-click="selectMatch($index)" role="option">
+        		<div typeahead-match index="$index" match="match" query="query" template-url="templateUrl"></div>
+    		</li>
+		</ul>
+		</script>		
+		<script type="text/ng-template" id="template/typeahead/typeahead-match.html">
+	  	<a tabindex="-1" bind-html-unsafe="match.label | typeaheadHighlight:query"></a>
+		</script>
+    </body>
+</html>
