@@ -1,115 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
 	<parent>
 		<groupId>com.threewks.thundr</groupId>
-		<artifactId>thundr-parent</artifactId>
-		<version>3</version>
+		<artifactId>thundr-gae-app</artifactId>
+		<version>2</version>
 	</parent>
+
 	<artifactId>thundr-gae-admin</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Thundr Google Appengine Admin Console</name>
-	<description />
-	<url>http://3wks.github.com/thundr/</url>
-
-	<organization>
-		<name>3wks</name>
-		<url>http://www.3wks.com.au</url>
-	</organization>
-
-	<developers>
-		<developer>
-			<id>nick</id>
-			<name>Nicholas Okunew</name>
-			<email>nick@3wks.com.au</email>
-		</developer>
-	</developers>
+	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<thundr.version>1.0.0</thundr.version>
-		<gae.version>1.9.2</gae.version>
+		<gae.version>1.9.15</gae.version>
+		<appVersion>${user.name}</appVersion>
+		<jvmflag.debug>-Xrunjdwp:transport=dt_socket,address=1044,server=y,suspend=n</jvmflag.debug>
 	</properties>
 
-	<!-- Licensing -->
-	<licenses>
-		<license>
-			<name>The Apache Software License, Version 2.0</name>
-			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-			<distribution>repo</distribution>
-		</license>
-	</licenses>
-	<scm>
-		<connection>scm:git:https://github.com/3wks/thundr-gae-cms</connection>
-		<developerConnection>scm:git:https://github.com/3wks/thundr-gae-cms</developerConnection>
-		<url>https://github.com/3wks/thundr-gae-cms</url>
-		<tag>HEAD</tag>
-	</scm>
-
 	<dependencies>
-		<!-- thundr dependency -->
 		<dependency>
 			<groupId>com.threewks.thundr</groupId>
 			<artifactId>thundr-gae</artifactId>
-			<version>${thundr.version}</version>
+			<version>2.0.1</version>
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.threewks.thundr</groupId>
 			<artifactId>thundr-handlebars</artifactId>
-			<version>${thundr.version}</version>
+			<version>2.0.0</version>
 			<scope>compile</scope>
 		</dependency>
-		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
-			<version>2.5</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.google.appengine</groupId>
-			<artifactId>appengine-testing</artifactId>
-			<version>${gae.version}</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.threewks.thundr</groupId>
-			<artifactId>thundr-gae</artifactId>
-			<version>${thundr.version}</version>
-			<type>test-jar</type>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.google.appengine</groupId>
-			<artifactId>appengine-api-stubs</artifactId>
-			<version>${gae.version}</version>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
-
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.0</version>
-				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
-				</configuration>
-			</plugin>
-			<plugin> <!-- SCM config -->
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-scm-plugin</artifactId>
-				<version>1.7</version>
-				<configuration>
-					<connectionType>connection</connectionType>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
-
-	<!-- Stuff nobody cares about -->
-	<modelVersion>4.0.0</modelVersion>
 </project>

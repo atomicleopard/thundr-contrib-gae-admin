@@ -12,6 +12,8 @@
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/angular-ui/0.4.0/angular-ui.min.css">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.min.css">
         <link rel="stylesheet" href="//cdn.rawgit.com/dalelotts/angular-bootstrap-datetimepicker/master/src/css/datetimepicker.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/pnotify/2.0.0/pnotify.all.min.css">
+
         
 		<style>
 			#result td { max-width: 480px; max-height: 480px; overflow: auto;}
@@ -29,6 +31,7 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui/0.4.0/angular-ui.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.10.0/ui-bootstrap-tpls.min.js"></script>
         <script src="//cdn.rawgit.com/dalelotts/angular-bootstrap-datetimepicker/0.2.2/src/js/datetimepicker.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/pnotify/2.0.0/pnotify.all.min.js"></script>
         
         <script>
  		angular.module("admin", ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ui.bootstrap.typeahead'])
@@ -36,7 +39,7 @@
  				$scope.kinds = undefined;
 				$scope.currentKind = undefined;
 				
-				$http.get("/admin/datastore/kinds").success(function(data){
+				$http.get("{{baseUrl}}/kinds").success(function(data){
 					$scope.kinds = data;
 				});
  			}])
@@ -50,6 +53,7 @@
  				$scope.query = undefined;
  				$scope.result = [];
  				$scope.loading = false;
+ 				$scope.regenerating = false;
  				$scope.operations = {	"=": "=",
  										"<=": "<=", 
  										"<": "<",
@@ -68,7 +72,7 @@
  										'org.joda.time.DateTime': "datetime"
  									};
  				
- 				$http.get("/admin/datastore/kind/"+$scope.kind).success(function(data){
+ 				$http.get("{{baseUrl}}/kinds/"+$scope.kind).success(function(data){
  					$scope.schema = data;
  					if($scope.query == undefined){
  						$scope.query = [{}]
@@ -85,11 +89,37 @@
  						$scope.query.splice(index, 1);
  					}
  				};
- 				
+
+ 				$scope.regenerateIndex = function(kind) {
+					console.log($scope.kind);
+					$scope.regenerating = true;
+					$scope.error = undefined;
+					$http.get("{{baseUrl}}/kinds/"+$scope.kind+"/reindex")
+						.success(function(data) {
+							$scope.regenerating = false;
+							new PNotify({
+                                title: 'Success',
+                                text: data + ' entities have been re-indexed',
+                                type: 'success'
+                            });
+						})
+						.error(function(data){
+							$scope.regenerating = false;
+							if(console){
+								console.error(data);
+							}
+							new PNotify({
+                                title: 'Error',
+                                text: 'An error occurred whilst trying to reindex. Please check the logs.',
+                                type: 'error'
+                            });
+						});
+				};
+
  				$scope.runQuery = function(){
  					$scope.loading = true;
  					$scope.error = undefined;
- 					$http.post("/admin/datastore/kind/"+$scope.kind+"/query", $scope.query)
+ 					$http.post("{{baseUrl}}/kinds/"+$scope.kind+"/query", $scope.query)
  						.success(function(data){
  							var keys = _.map(data, function(element){
  								return _.keys(element);
@@ -132,15 +162,15 @@
  			}])
  			.config(['$routeProvider', function($routeProvider) {
  			    $routeProvider.
- 			      when('/kind/', {
+ 			      when('/kinds/', {
  			    	templateUrl: 'empty.html'
  			      }).
- 			      when('/kind/:kind/', {
+ 			      when('/kinds/:kind/', {
  			    	templateUrl: 'kind.html',
  			    	controller: 'KindController'
  			      }).
  			      otherwise({
- 			        redirectTo: '/kind/'
+ 			        redirectTo: '/kinds/'
  			      });
  			  }]);
         </script>
@@ -156,9 +186,9 @@
 			<aside class="col-sm-2">
 				<h3>Kinds</h3>
 				<ul class="nav nav-pills nav-stacked">
-					 <li ng-class="{active: currentKind == kind}" ng-repeat="(kind, class) in kinds">
-					 	<a href="#/kind/&#123;&#123; kind &#125;&#125;/">
-							&#123;&#123; kind &#125;&#125;
+					 <li ng-class="{active: currentKind == kind.name}" ng-repeat="kind in kinds | orderBy:'+name'">
+					 	<a href="#/kinds/&#123;&#123; kind.name &#125;&#125;/">
+							&#123;&#123; kind.name &#125;&#125;
 						</a>
 					</li>
 				</ul>
@@ -173,7 +203,24 @@
 			</div>
 		</script>
 		<script type="text/ng-template" id="kind.html">
-			<h3>Kind &#123;&#123; kind &#125;&#125;</h3>
+			<div class="well">
+				<div class="row">
+					<label class="col-xs-2">Kind</label>
+					<div class="col-xs-10">&#123;&#123; schema.name &#125;&#125;</div>
+				</div>
+				<div class="row">
+					<label class="col-xs-2">Entity Class</label>
+					<div class="col-xs-10">&#123;&#123; schema.className &#125;&#125;</div>
+				</div>
+				<div class="row">
+					<label class="col-xs-2">Search Index</label>
+					<div class="col-xs-10">
+						&#123;&#123; schema.searchIndex &#125;&#125;
+						<button ng-click="regenerateIndex()" ng-if="schema.searchIndex" class="btn btn-xs btn-success"><i class="fa" ng-class="{'fa-refresh fa-spin': regenerating, 'fa-sort-amount-desc': !regenerating}"></i> Regenerate index</button>
+						<span ng-if="!schema.searchIndex">N/A</span>
+					</div>
+				</div>
+			</div>
 			<div class="well">
 				<div class="alert alert-danger" ng-show="error">
 					&#123;&#123; error &#125;&#125;
