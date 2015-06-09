@@ -1,3 +1,21 @@
+/*
+ * This file is a component of the thundr-contrib-gae-admin library,
+ * a software library from Atomic Leopard.
+ *
+ * Copyright (C) 2015 Atomic Leopard, <admin@atomicleopard.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.threewks.thundr.gae.admin;
 
 import java.lang.reflect.Field;
@@ -33,8 +51,10 @@ import com.threewks.thundr.gae.objectify.repository.AbstractRepository;
 import com.threewks.thundr.json.GsonSupport;
 import com.threewks.thundr.logger.Logger;
 import com.threewks.thundr.search.gae.IdGaeSearchService;
+
 import jodd.typeconverter.TypeConversionException;
 import jodd.util.ReflectUtil;
+
 import org.apache.commons.lang3.StringUtils;
 
 public class GaeDatastoreService {
@@ -57,21 +77,21 @@ public class GaeDatastoreService {
 
 	public Kind getKind(String kind, boolean includePossibleValues) {
 		List<Property> properties;
-		EntityMetadata metadata = objectifyFactory.getMetadata(kind);
+		EntityMetadata<?> metadata = objectifyFactory.getMetadata(kind);
 
 		if (metadata == null) {
 			return null;
 		}
 
 		if (includePossibleValues) {
-			Map<String, Collection<Class>> indexData = getIndexData(kind);
+			Map<String, Collection<Class<?>>> indexData = getIndexData(kind);
 			properties = getProperties(kind, metadata.getEntityClass(), indexData);
 		}
 		else {
 			properties = getProperties(metadata.getEntityClass());
 		}
 
-		AbstractRepository repo = repositoryRegistry.get(metadata.getEntityClass());
+		AbstractRepository<?, ?> repo = repositoryRegistry.get(metadata.getEntityClass());
 		Index index = getSearchIndex(repo);
 
 		return new Kind(kind, metadata, properties, index);
@@ -90,11 +110,11 @@ public class GaeDatastoreService {
 		return kinds;
 	}
 
-	public List listEntities(String kind, List<QueryOperation> query, Integer limit, Integer offset) {
+	public List<?> listEntities(String kind, List<QueryOperation> query, Integer limit, Integer offset) {
 		limit = clamp(limit, 0, Integer.MAX_VALUE, 100);
 		offset = clamp(offset, 0, Integer.MAX_VALUE, 0);
 
-		Class type = objectifyFactory.getMetadata(kind).getEntityClass();
+		Class<?> type = objectifyFactory.getMetadata(kind).getEntityClass();
 
 		com.googlecode.objectify.cmd.Query<?> ofyQuery = ObjectifyService.ofy().load().type(type);
 		if (Expressive.isNotEmpty(query)) {
@@ -114,9 +134,9 @@ public class GaeDatastoreService {
 	}
 
 	public int regenerateIndex(String kind) {
-		Class entityClass = objectifyFactory.getMetadata(kind).getEntityClass();
-		AbstractRepository repo = repositoryRegistry.get(entityClass);
-		IdGaeSearchService searchService = getSearchService(repo);
+		Class<?> entityClass = objectifyFactory.getMetadata(kind).getEntityClass();
+		AbstractRepository<?, ?> repo = repositoryRegistry.get(entityClass);
+		IdGaeSearchService<?, ?> searchService = getSearchService(repo);
 		searchService.removeAll();
 
 		int offset = 0;
@@ -128,7 +148,7 @@ public class GaeDatastoreService {
 
 			if (indexer != null) {
 				while (true) {
-					List results = ObjectifyService.ofy().load().type(entityClass).offset(offset).limit(limit).list();
+					List<?> results = ObjectifyService.ofy().load().type(entityClass).offset(offset).limit(limit).list();
 					count += results.size();
 					indexer.invoke(repo, results);
 
@@ -146,7 +166,7 @@ public class GaeDatastoreService {
 		return count;
 	}
 
-	private Method getIndexer(AbstractRepository repo) throws IllegalAccessException, InvocationTargetException {
+	private Method getIndexer(AbstractRepository<?, ?> repo) throws IllegalAccessException, InvocationTargetException {
 		Method[] ms = ReflectUtil.getAccessibleMethods(repo.getClass());
 
 		for (Method m : ms) {
@@ -166,7 +186,7 @@ public class GaeDatastoreService {
 			return null;
 		}
 
-		Class entityClass = objectifyFactory.getMetadata(kind).getEntityClass();
+		Class<?> entityClass = objectifyFactory.getMetadata(kind).getEntityClass();
 		Field field = getField(entityClass, fieldName);
 		String fieldType = field.getType().getName();
 
@@ -193,15 +213,15 @@ public class GaeDatastoreService {
 	}
 
 
-	private IdGaeSearchService getSearchService(AbstractRepository repo) {
-		return (IdGaeSearchService) getField(repo, "searchService");
+	private IdGaeSearchService<?, ?> getSearchService(AbstractRepository<?, ?> repo) {
+		return (IdGaeSearchService<?, ?>) getField(repo, "searchService");
 	}
 
-	private Index getSearchIndex(AbstractRepository repo) {
+	private Index getSearchIndex(AbstractRepository<?, ?> repo) {
 		return (Index) getField(getSearchService(repo), "index");
 	}
 
-	private Field getField(Class c, String fieldName) {
+	private Field getField(Class<?> c, String fieldName) {
 		Field[] fields = ReflectUtil.getAccessibleFields(c);
 		for (Field f: fields) {
 			if (StringUtils.equals(f.getName(), fieldName)) {
@@ -222,13 +242,13 @@ public class GaeDatastoreService {
 		}
 	}
 
-	private List<Property> getProperties(String kind, Class entityClass, Map<String, Collection<Class>> indexData) {
+	private List<Property> getProperties(String kind, Class<?> entityClass, Map<String, Collection<Class<?>>> indexData) {
 		List<Property> properties = new ArrayList<>();
 		Field[] fields = ReflectUtil.getAccessibleFields(entityClass);
 
 		for (Field f : fields) {
 			Property p = new Property(f);
-			Collection<Class> types = indexData.get(f.getName());
+			Collection<Class<?>> types = indexData.get(f.getName());
 			List<Object> possibleValues = getPossibleValues(kind, f, types);
 			p.addPossibleValues(possibleValues);
 			properties.add(p);
@@ -237,7 +257,7 @@ public class GaeDatastoreService {
 		return properties;
 	}
 
-	private List<Property> getProperties(Class entityClass) {
+	private List<Property> getProperties(Class<?> entityClass) {
 		List<Property> properties = new ArrayList<>();
 		Field[] fields = ReflectUtil.getAccessibleFields(entityClass);
 
@@ -248,19 +268,20 @@ public class GaeDatastoreService {
 		return properties;
 	}
 
-	private static final Function<String, Class> ToClass = new Function<String, Class>() {
+	private static final Function<String, Class<?>> ToClass = new Function<String, Class<?>>() {
 		@Override
-		public Class apply(String input) {
+		public Class<?> apply(String input) {
 			return LowLevelTypeMap.get(input);
 		}
 	};
 
-	private Map<String, Collection<Class>> getIndexData(String kind) {
+	@SuppressWarnings("unchecked")
+	private Map<String, Collection<Class<?>>> getIndexData(String kind) {
 		Query q = new Query(Entities.PROPERTY_METADATA_KIND).setAncestor(Entities.createKindKey(kind));
-		Map<String, Collection<Class>> results = new LinkedHashMap<>();
+		Map<String, Collection<Class<?>>> results = new LinkedHashMap<>();
 		for (Entity entity : datastoreService.prepare(q).asIterable()) {
 			Collection<String> propertyRepresentations = (Collection<String>) entity.getProperty("property_representation");
-			Collection<Class> types = Collections2.transform(propertyRepresentations, ToClass);
+			Collection<Class<?>> types = Collections2.transform(propertyRepresentations, ToClass);
 			results.put(entity.getKey().getName(), types);
 		}
 
@@ -276,7 +297,7 @@ public class GaeDatastoreService {
 			"REFERENCE", com.google.appengine.api.datastore.Key.class);
 
 
-	private List<Object> getPossibleValues(String kind, Field field, Collection<Class> types) {
+	private List<Object> getPossibleValues(String kind, Field field, Collection<Class<?>> types) {
 		List<Object> existingValues = new ArrayList<>();
 
 		if (isIndexed(field)) {

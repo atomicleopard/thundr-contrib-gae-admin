@@ -1,7 +1,8 @@
 /*
- * This file is a component of com.threewks.thundr, a software library from 3wks.
- * Read more: http://www.3wks.com.au/com.threewks.thundr
- * Copyright (C) 2013 3wks, <com.threewks.thundr@3wks.com.au>
+ * This file is a component of the thundr-contrib-gae-admin library,
+ * a software library from Atomic Leopard.
+ *
+ * Copyright (C) 2015 Atomic Leopard, <admin@atomicleopard.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,16 +30,19 @@ import com.threewks.thundr.injection.BaseModule;
 import com.threewks.thundr.injection.UpdatableInjectionContext;
 import com.threewks.thundr.module.DependencyRegistry;
 import com.threewks.thundr.route.Router;
+
 import jodd.util.ReflectUtil;
+
 import org.apache.commons.lang3.StringUtils;
 
 public class GaeAdminModule extends BaseModule {
 
+	@SuppressWarnings("rawtypes")
 	private static Collection<Class<? extends AbstractRepository>> RepositoryClasses = new HashSet<>();
 	private static String BaseUrl = "/admin/datastore";
 	private static boolean AutoRegister = true;
 
-	public static <T extends AbstractRepository> void register(Class<T> repoClass) {
+	public static <T extends AbstractRepository<?, ?>> void register(Class<T> repoClass) {
 		RepositoryClasses.add(repoClass);
 	}
 
@@ -89,18 +93,20 @@ public class GaeAdminModule extends BaseModule {
 		router.get(BaseUrl + "/kinds/{kind}/reindex", DatastoreAdminController.class, "regenerateIndex",  null);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void registerRepositories(UpdatableInjectionContext injectionContext) {
 		RepositoryRegistry registry = injectionContext.get(RepositoryRegistry.class);
 
 		for (Class<? extends AbstractRepository> repositoryClass : RepositoryClasses) {
 			AbstractRepository repo = injectionContext.get(repositoryClass);
-			Class entityClass = ReflectUtil.getGenericSupertype(repo.getClass());
+			Class<?> entityClass = ReflectUtil.getGenericSupertype(repo.getClass());
 			registry.add(entityClass, repo);
 		}
 
 		injectionContext.inject(registry).as(RepositoryRegistry.class);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void autoRegister(UpdatableInjectionContext injectionContext) {
 		Field[] fields = ReflectUtil.getAccessibleFields(injectionContext.getClass());
 
@@ -108,11 +114,12 @@ public class GaeAdminModule extends BaseModule {
 			if (StringUtils.equals(f.getName(), "types")) {
 				ReflectUtil.forceAccess(f);
 				try {
-					Triplets<Class<?>, String, Class> types = (Triplets<Class<?>, String, Class>) f.get(injectionContext);
+					Triplets<Class<?>, String, Class<?>> types = (Triplets<Class<?>, String, Class<?>>) f.get(injectionContext);
 
-					for (Class c : types.values()) {
+					for (Class<?> c : types.values()) {
 						if (AbstractRepository.class.isAssignableFrom(c)) {
-							GaeAdminModule.register(c);
+							Class<? extends AbstractRepository<?, ?>> repoClass = (Class<? extends AbstractRepository<?, ?>>) c;
+							GaeAdminModule.register(repoClass);
 						}
 					}
 				} catch (IllegalAccessException e) {
