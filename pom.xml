@@ -16,6 +16,7 @@
 
 	<properties>
 		<gae.version>1.9.21</gae.version>
+		<gpg.keyname>26463462</gpg.keyname>
 	</properties>
 
 	<dependencies>
