@@ -11,9 +11,9 @@ A drop in datastore admin console for thundr-gae apps.
 1. Add the Maven dependency to your pom.xml:
 ```
 <dependency>
-  <groupId>com.threewks.thundr</groupId>
-  <artifactId>thundr-gae-admin</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <groupId>com.atomicleopard.thundr</groupId>
+  <artifactId>thundr-contrib-gae-admin</artifactId>
+  <version>1.0.0</version>
 </dependency>
 ```
 
